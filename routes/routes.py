@@ -3,6 +3,7 @@ from jogoteca import app, db
 from models.Jogos import Jogos
 from models.Usuarios import Usuarios
 
+
 @app.route("/")
 def index():
     lista = Jogos.query.order_by(Jogos.id)
@@ -16,6 +17,7 @@ def novo():
 
     return render_template("novo.html", titulo="Novo Jogo")
 
+
 @app.route("/editar/<int:id>")
 def editar(id):
     if 'usuario_logado' not in session or session['usuario_logado'] == None:
@@ -26,21 +28,21 @@ def editar(id):
 
 @app.route("/criar", methods=["POST"])
 def criar():
-    
+
     nome = request.form["nome"]
     categoria = request.form["categoria"]
     console = request.form["console"]
 
     jogo = Jogos.query.filter_by(nome=nome).first()
-    
+
     if jogo:
         flash("Este jogo já existe no banco de dados")
         return redirect(url_for('index'))
-    
+
     novo_jogo = Jogos(nome=nome, categoria=categoria, console=console)
     db.session.add(novo_jogo)
     db.session.commit()
-    
+
     return redirect(url_for('index'))
 
 
@@ -50,10 +52,21 @@ def atualizar():
     jogo.nome = request.form["nome"]
     jogo.categoria = request.form["categoria"]
     jogo.console = request.form["console"]
-    
+
     db.session.add(jogo)
     db.session.commit()
-    
+
+    return redirect(url_for('index'))
+
+
+@app.route("/deletar/<int:id>")
+def deletar(id):
+    if 'usuario_logado' not in session or session['usuario_logado'] == None:
+        return redirect(url_for('login'))
+
+    Jogos.query.filter_by(id=id).delete()
+    db.session.commit()
+    flash("Jogo deletado com sucesso")
     return redirect(url_for('index'))
 
 
@@ -65,7 +78,8 @@ def login():
 
 @app.route('/autenticar', methods=['POST'])
 def autenticar():
-    usuario = Usuarios.query.filter_by(nickname=request.form['usuario']).first()
+    usuario = Usuarios.query.filter_by(
+        nickname=request.form['usuario']).first()
     if usuario:
         if request.form['senha'] == usuario.senha:
             session['usuario_logado'] = usuario.nickname
