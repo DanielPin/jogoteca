@@ -1,4 +1,13 @@
-from flask import flash, redirect, render_template, request, redirect, session, url_for
+from flask import (
+    flash,
+    redirect,
+    render_template,
+    request,
+    redirect,
+    session,
+    url_for,
+    send_from_directory,
+)
 from jogoteca import app, db
 from models.Jogos import Jogos
 from models.Usuarios import Usuarios
@@ -12,16 +21,17 @@ def index():
 
 @app.route("/novo")
 def novo():
-    if 'usuario_logado' not in session or session['usuario_logado'] == None:
-        return redirect(url_for('login', proxima=url_for('novo')))
-
+    if "usuario_logado" not in session or session["usuario_logado"] == None:
+        return redirect(url_for("login", proxima=url_for("novo")))
     return render_template("novo.html", titulo="Novo Jogo")
 
 
 @app.route("/editar/<int:id>")
 def editar(id):
-    if 'usuario_logado' not in session or session['usuario_logado'] == None:
-        return redirect(url_for('login', proxima=url_for('editar')))
+    print("vamos editar")
+    if "usuario_logado" not in session or session["usuario_logado"] == None:
+        print("nçao esta logado")
+        return redirect(url_for("login", proxima=url_for("editar", id=id)))
     jogo = Jogos.query.filter_by(id=id).first()
     return render_template("editar.html", titulo="Editando Jogo", jogo=jogo)
 
@@ -37,13 +47,17 @@ def criar():
 
     if jogo:
         flash("Este jogo já existe no banco de dados")
-        return redirect(url_for('index'))
+        return redirect(url_for("index"))
 
     novo_jogo = Jogos(nome=nome, categoria=categoria, console=console)
     db.session.add(novo_jogo)
     db.session.commit()
 
-    return redirect(url_for('index'))
+    arquivo = request.files["arquivo"]
+    upload_path = app.config["UPLOAD_PATH"]
+    arquivo.save(f"{upload_path}/capa_{novo_jogo.id}.jpg")
+
+    return redirect(url_for("index"))
 
 
 @app.route("/atualizar", methods=["POST"])
@@ -56,46 +70,50 @@ def atualizar():
     db.session.add(jogo)
     db.session.commit()
 
-    return redirect(url_for('index'))
+    return redirect(url_for("index"))
 
 
 @app.route("/deletar/<int:id>")
 def deletar(id):
-    if 'usuario_logado' not in session or session['usuario_logado'] == None:
-        return redirect(url_for('login'))
+    if "usuario_logado" not in session or session["usuario_logado"] == None:
+        return redirect(url_for("login"))
 
     Jogos.query.filter_by(id=id).delete()
     db.session.commit()
     flash("Jogo deletado com sucesso")
-    return redirect(url_for('index'))
+    return redirect(url_for("index"))
 
 
 @app.route("/login")
 def login():
-    proxima = request.args.get('proxima')
+    proxima = request.args.get("proxima")
     return render_template("login.html", proxima=proxima)
 
 
-@app.route('/autenticar', methods=['POST'])
+@app.route("/autenticar", methods=["POST"])
 def autenticar():
-    usuario = Usuarios.query.filter_by(
-        nickname=request.form['usuario']).first()
+    usuario = Usuarios.query.filter_by(nickname=request.form["usuario"]).first()
     if usuario:
-        if request.form['senha'] == usuario.senha:
-            session['usuario_logado'] = usuario.nickname
-            flash(usuario.nickname + ' logou com sucesso!')
-            proxima_pagina = request.form['proxima']
+        if request.form["senha"] == usuario.senha:
+            session["usuario_logado"] = usuario.nickname
+            flash(usuario.nickname + " logou com sucesso!")
+            proxima_pagina = request.form["proxima"]
             return redirect(proxima_pagina)
         else:
-            flash('usuario nao logado!')
-            return redirect(url_for('login'))
+            flash("usuario nao logado!")
+            return redirect(url_for("login"))
     else:
-        flash('usuario nao logado!')
-        return redirect(url_for('login'))
+        flash("usuario nao logado!")
+        return redirect(url_for("login"))
 
 
-@app.route('/logout')
+@app.route("/logout")
 def logout():
-    session['usuario_logado'] = None
-    flash('usuario deslogado!')
-    return redirect(url_for('index'))
+    session["usuario_logado"] = None
+    flash("usuario deslogado!")
+    return redirect(url_for("index"))
+
+
+@app.route("/uploads/<nome_arquivo>")
+def imagem(nome_arquivo):
+    return send_from_directory("uploads", nome_arquivo)
