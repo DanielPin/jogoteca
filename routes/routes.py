@@ -18,6 +18,7 @@ from helper.helpers import (
     FormularioUsuario,
 )
 import time
+from flask_bcrypt import check_password_hash
 
 
 @app.route("/")
@@ -125,17 +126,14 @@ def login():
 @app.route("/autenticar", methods=["POST"])
 def autenticar():
     form = FormularioUsuario(request.form)
-
     usuario = Usuarios.query.filter_by(nickname=form.nickname.data).first()
-    if usuario:
-        if form.senha.data == usuario.senha:
-            session["usuario_logado"] = usuario.nickname
-            flash(usuario.nickname + " logou com sucesso!")
-            proxima_pagina = request.form["proxima"]
-            return redirect(proxima_pagina)
-        else:
-            flash("usuario nao logado!")
-            return redirect(url_for("login"))
+    senha = check_password_hash(usuario.senha, form.senha.data)
+    if usuario and senha:
+        session["usuario_logado"] = usuario.nickname
+        flash(usuario.nickname + " logou com sucesso!")
+        proxima_pagina = request.form["proxima"]
+        return redirect(proxima_pagina)
+
     else:
         flash("usuario nao logado!")
         return redirect(url_for("login"))
